@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment
+.env
+
+# Playwright saved auth profile (contains your Google session cookies — never commit)
+auth/
+
+# Data cache (optional, can commit if you want to share ISIN mappings)
+data/isin_cache.json
+
+# Uploaded files temp storage
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

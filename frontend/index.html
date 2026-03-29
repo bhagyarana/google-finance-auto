@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Finance Bulk Upload</title>
+<style>
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Tokens ─────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:            #f9fafb;
+  --surface:       #ffffff;
+  --surface-hover: #f3f4f6;
+  --border:        #e5e7eb;
+  --border-light:  #f3f4f6;
+
+  --text:          #111827;
+  --text-2:        #374151;
+  --text-muted:    #6b7280;
+  --text-disabled: #9ca3af;
+
+  --accent:        #18181b;
+  --accent-hover:  #27272a;
+
+  --green:         #16a34a;
+  --green-bg:      #f0fdf4;
+  --green-border:  #bbf7d0;
+
+  --yellow:        #b45309;
+  --yellow-bg:     #fffbeb;
+  --yellow-border: #fde68a;
+
+  --red:           #dc2626;
+  --red-bg:        #fef2f2;
+  --red-border:    #fecaca;
+
+  --blue:          #2563eb;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────────── */
+html { height: 100%; }
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────────── */
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.header-icon {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.header-text h1 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--text);
+}
+.header-text p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.auth-badge {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color .15s, color .15s;
+  user-select: none;
+}
+.auth-badge:hover { border-color: var(--accent); color: var(--text); }
+.auth-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.auth-badge.authed .dot { background: var(--green); }
+.auth-badge.authed { color: var(--text-2); }
+
+/* ── Cards ──────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 12px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.step-num {
+  width: 20px; height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.card-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* ── Dropzone ───────────────────────────────────────────────────────────────── */
+.dropzone {
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  background: var(--surface);
+  position: relative;
+}
+.dropzone:hover { border-color: var(--text-muted); }
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+.dropzone.has-file {
+  border-style: solid;
+  border-color: var(--green);
+}
+.dropzone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.dropzone-icon {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+}
+.dropzone-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.dropzone-hint { font-size: 12px; color: var(--text-muted); }
+.file-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 12px; padding: 4px 12px;
+  background: var(--green-bg);
+  border: 1px solid var(--green-border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+
+/* ── Form controls ──────────────────────────────────────────────────────────── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.field input, .field select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(24,24,27,0.08);
+}
+.field input[type="number"] { -moz-appearance: textfield; }
+.hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.toggle-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .15s;
+}
+.toggle-row:hover { border-color: var(--text-muted); }
+.toggle-row input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px; height: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.toggle-label { font-size: 13px; font-weight: 500; color: var(--text); }
+.toggle-hint  { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+/* ── Divider ────────────────────────────────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s, color .15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .4; pointer-events: none; }
+
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.btn-ghost {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.btn-ghost:hover { background: var(--surface-hover); border-color: var(--text-muted); }
+
+.btn-danger {
+  background: var(--surface);
+  border-color: var(--red-border);
+  color: var(--red);
+}
+.btn-danger:hover { background: var(--red-bg); }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+
+/* ── Table ──────────────────────────────────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-top: 4px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  background: var(--surface-hover);
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+tbody tr { border-bottom: 1px solid var(--border-light); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface-hover); }
+tbody td {
+  padding: 9px 14px;
+  white-space: nowrap;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+td.amount {
+  font-family: 'Fira Code', 'Cascadia Mono', monospace;
+  font-size: 12.5px;
+}
+td.amount.positive { color: var(--green); }
+
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.badge-buy      { background: var(--green-bg);  color: var(--green);  border-color: var(--green-border); }
+.badge-sell     { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow-border); }
+.badge-buysell  { background: #eff6ff;           color: #1d4ed8;       border-color: #bfdbfe; }
+.badge-net      { background: var(--surface-hover); color: var(--text-2); border-color: var(--border); }
+
+/* Section labels */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin: 20px 0 8px;
+}
+.section-label:first-of-type { margin-top: 0; }
+
+/* FIFO summary table */
+.fifo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fifo-table th {
+  background: #fef9c3;
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #92400e;
+  border-bottom: 1px solid #fde68a;
+}
+.fifo-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-light); }
+.fifo-table tr:last-child td { border-bottom: none; }
+.gain-positive { color: var(--green); font-weight: 600; }
+.gain-negative { color: var(--red);   font-weight: 600; }
+
+/* Summary chips */
+.summary-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--surface);
+}
+.chip b { color: var(--text); font-weight: 600; }
+
+/* ── Warn box ───────────────────────────────────────────────────────────────── */
+.warn-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--yellow-bg);
+  border: 1px solid var(--yellow-border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--yellow);
+}
+.warn-box strong { display: block; margin-bottom: 6px; font-weight: 600; }
+.warn-box ul { padding-left: 16px; line-height: 1.8; }
+
+/* ── Progress ───────────────────────────────────────────────────────────────── */
+.progress-section { display: none; margin-bottom: 16px; }
+.progress-section.visible { display: block; }
+.progress-meta {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.progress-meta b { color: var(--text); font-weight: 600; }
+.progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 10px;
+  transition: width .35s ease;
+  width: 0%;
+}
+
+/* ── Log ────────────────────────────────────────────────────────────────────── */
+.log-container {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+.log-entry {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 3px 14px;
+  line-height: 1.6;
+}
+.log-entry:hover { background: var(--surface); }
+.log-ts   { color: var(--text-disabled); flex-shrink: 0; font-size: 10.5px; }
+.log-kind { flex-shrink: 0; width: 7px; }
+.log-msg  { flex: 1; word-break: break-word; }
+.log-row  {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--surface-hover);
+  color: var(--text-disabled);
+  border: 1px solid var(--border);
+  font-family: inherit;
+}
+
+.log-info    .log-msg  { color: var(--text-muted); }
+.log-info    .log-kind { color: var(--text-disabled); }
+.log-success .log-msg  { color: var(--green); }
+.log-success .log-kind { color: var(--green); }
+.log-warning .log-msg  { color: var(--yellow); }
+.log-warning .log-kind { color: var(--yellow); }
+.log-error   .log-msg  { color: var(--red); }
+.log-error   .log-kind { color: var(--red); }
+.log-done    .log-msg  { color: var(--text); font-weight: 600; }
+.log-done    .log-kind { color: var(--green); }
+
+/* ── Spinner ────────────────────────────────────────────────────────────────── */
+.spinner {
+  width: 13px; height: 13px;
+  border: 1.5px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .55s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.spinner.dark {
+  border-color: rgba(24,24,27,.15);
+  border-top-color: var(--accent);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ──────────────────────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 999;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  transform: translateY(60px);
+  opacity: 0;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+  pointer-events: none;
+  max-width: 320px;
+}
+#toast.show { transform: none; opacity: 1; }
+#toast.toast-error { border-color: var(--red-border); color: var(--red); }
+#toast.toast-ok    { border-color: var(--green-border); color: var(--green); }
+
+/* ── Utils ──────────────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true">
+        <polyline points="1,12 5,7 9,9 13,3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="13" cy="3" r="1.5" fill="white"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>Google Finance Bulk Upload</h1>
+      <p>Import buy/sell transactions from Excel into your portfolio</p>
+    </div>
+    <div class="auth-badge" id="authBadge" title="Click to clear saved login" onclick="clearAuth()">
+      <div class="dot"></div>
+      <span id="authLabel">Checking…</span>
+    </div>
+  </div>
+
+  <!-- Step 1 — Upload -->
+  <div class="card" id="stepUpload">
+    <div class="card-header">
+      <div class="step-num">1</div>
+      <span class="card-title">Upload Excel File</span>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="dropzone-icon" id="dropIcon">⬆</div>
+      <div class="dropzone-label" id="dropLabel">Drag &amp; drop your .xlsx file here</div>
+      <div class="dropzone-hint">or click to browse — Excel files only (.xlsx, .xls)</div>
+      <div class="file-pill hidden" id="fileNameBadge">
+        <span>✓</span><span id="fileNameText"></span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; max-width:200px;">
+      <div class="field">
+        <label>Skip header rows</label>
+        <input type="number" id="skipRows" value="0" min="0" max="10">
+      </div>
+      <p class="hint">Set to 0 if row 1 is the column header. Increase if extra rows precede it.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnParse" onclick="uploadFile()" disabled>
+        Parse File
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2 — Preview -->
+  <div class="card hidden" id="stepPreview">
+    <div class="card-header">
+      <div class="step-num">2</div>
+      <span class="card-title">Preview Trades</span>
+      <span class="card-subtitle" id="tradeCount"></span>
+    </div>
+
+    <div class="summary-row" id="summaryChips"></div>
+
+    <!-- Raw trades from spreadsheet -->
+    <p class="section-label">All Spreadsheet Rows</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Symbol / ISIN</th>
+            <th>Qty</th>
+            <th>Buy Date</th>
+            <th>Buy Price</th>
+            <th>Sell Date</th>
+            <th>Sell Price</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="rawTradeBody"></tbody>
+      </table>
+    </div>
+
+    <!-- FIFO netting summary (shown only when sells exist) -->
+    <div id="fifoSection" class="hidden">
+      <p class="section-label">FIFO netting — realized gains</p>
+      <div class="table-wrap">
+        <table class="fifo-table">
+          <thead>
+            <tr>
+              <th>ISIN</th>
+              <th>Bought</th>
+              <th>Sold</th>
+              <th>Net (remaining)</th>
+              <th>Realized P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="fifoBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Net positions that will be entered into Google Finance -->
+    <p class="section-label" id="netLabel">All Consolidated BUY Trades</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol / ISIN</th>
+            <th>Net Qty</th>
+            <th>Buy Date</th>
+            <th>Cost / Share</th>
+            <th>Total Cost</th>
+          </tr>
+        </thead>
+        <tbody id="netTradeBody"></tbody>
+      </table>
+    </div>
+
+    <div class="warn-box hidden" id="parseWarnings">
+      <strong>⚠ Warnings</strong>
+      <ul id="warningList"></ul>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="resetAll()">← Re-upload</button>
+      <button class="btn btn-primary" onclick="showRunStep()">Configure &amp; Run →</button>
+    </div>
+  </div>
+
+  <!-- Step 3 — Run config -->
+  <div class="card hidden" id="stepRun">
+    <div class="card-header">
+      <div class="step-num">3</div>
+      <span class="card-title">Configure Run</span>
+    </div>
+
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="field">
+        <label>Portfolio name</label>
+        <input type="text" id="portfolioName" value="My Portfolio" placeholder="e.g. Long-term Holdings">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;justify-content:flex-end;">
+        <label class="toggle-row">
+          <input type="checkbox" id="chkCreate" checked>
+          <div>
+            <div class="toggle-label">Create if missing</div>
+            <div class="toggle-hint">Create portfolio if it doesn't exist yet</div>
+          </div>
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="chkHeadless">
+          <div>
+            <div class="toggle-label">Run headless</div>
+            <div class="toggle-hint">No visible browser window</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <label class="toggle-row" style="max-width:460px;">
+      <input type="checkbox" id="chkDryRun">
+      <div>
+        <div class="toggle-label">Dry run</div>
+        <div class="toggle-hint">Validate &amp; resolve symbols only — no browser automation</div>
+      </div>
+    </label>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="showPreviewStep()">← Back</button>
+      <button class="btn btn-primary" id="btnRun" onclick="startRun()">
+        <span id="btnRunLabel">Run Automation</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 4 — Progress -->
+  <div class="card hidden" id="stepProgress">
+    <div class="card-header">
+      <div class="step-num">4</div>
+      <span class="card-title" id="progressTitle">Running…</span>
+    </div>
+
+    <div class="progress-section" id="progressSection">
+      <div class="progress-meta">
+        <span id="progressLabel">Processing trades…</span>
+        <b id="progressPct">0%</b>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="log-container" id="logContainer"></div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-ghost hidden" id="btnNewRun" onclick="resetAll()">← New Upload</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let taskId = null, trades = [], totalRows = 0, doneRows = 0;
+
+// ── Auth ───────────────────────────────────────────────────────────────────────
+async function checkAuth() {
+  try {
+    const d = await fetch('/status').then(r => r.json());
+    const badge = document.getElementById('authBadge');
+    const label = document.getElementById('authLabel');
+    if (d.auth_saved) {
+      badge.classList.add('authed');
+      label.textContent = 'Auth saved';
+      badge.title = 'Click to clear saved login';
+    } else {
+      badge.classList.remove('authed');
+      label.textContent = 'Not authenticated';
+      badge.title = 'No saved auth — manual login required on first run';
+    }
+  } catch {}
+}
+
+async function clearAuth() {
+  if (!confirm('Clear saved login? You will need to log in manually on the next run.')) return;
+  try {
+    const d = await fetch('/auth', { method: 'DELETE' }).then(r => r.json());
+    toast(d.message, 'ok');
+    checkAuth();
+  } catch (e) { toast('Failed: ' + e, 'error'); }
+}
+
+// ── Drag & drop ────────────────────────────────────────────────────────────────
+const dropzone  = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragging'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragging');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) { toast('Please upload an .xlsx or .xls file.', 'error'); return; }
+  fileInput._selectedFile = file;
+  dropzone.classList.add('has-file');
+  document.getElementById('dropIcon').textContent  = '✓';
+  document.getElementById('dropLabel').textContent = 'File ready';
+  document.getElementById('fileNameBadge').classList.remove('hidden');
+  document.getElementById('fileNameText').textContent = file.name;
+  document.getElementById('btnParse').disabled = false;
+}
+
+// ── Step 1 → parse ─────────────────────────────────────────────────────────────
+async function uploadFile() {
+  const file = fileInput._selectedFile;
+  if (!file) { toast('Select a file first.', 'error'); return; }
+  const btn = document.getElementById('btnParse');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Parsing…';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('skip_rows', document.getElementById('skipRows').value);
+
+  try {
+    const r = await fetch('/upload', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) {
+      toast(d.detail || 'Parse error', 'error');
+      btn.disabled = false; btn.innerHTML = 'Parse File'; return;
+    }
+    taskId = d.task_id; trades = d.trades; totalRows = d.total;
+    renderPreview(d.raw_trades ?? d.trades ?? [], d.trades ?? [], d.fifo_summary ?? [], d.warnings ?? []);
+    show('stepPreview');
+  } catch (e) {
+    toast('Network error: ' + e, 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = 'Parse File';
+  }
+}
+
+// ── Step 2 → preview ───────────────────────────────────────────────────────────
+function renderPreview(rawTrades, netTrades, fifoSummary, warnings) {
+  const buyRows     = rawTrades.filter(t => t.trade_type === 'buy' && !t.has_sell).length;
+  const sellRows    = rawTrades.filter(t => t.trade_type === 'sell').length;
+  const combinedRows = rawTrades.filter(t => t.trade_type === 'buy' && t.has_sell).length;
+  const hasSells    = sellRows > 0 || combinedRows > 0;
+
+  document.getElementById('tradeCount').textContent =
+    rawTrades.length + ' row' + (rawTrades.length !== 1 ? 's' : '');
+  document.getElementById('summaryChips').innerHTML =
+    `<div class="chip">Total rows <b>${rawTrades.length}</b></div>` +
+    `<div class="chip">Buys <b>${buyRows + combinedRows}</b></div>` +
+    `<div class="chip">Sells <b>${sellRows + combinedRows}</b></div>` +
+    `<div class="chip">Net positions <b>${netTrades.length}</b></div>`;
+
+  // ── Raw trades table ──────────────────────────────────────────────────────
+  const rawBody = document.getElementById('rawTradeBody');
+  rawBody.innerHTML = '';
+  rawTrades.forEach(t => {
+    const isSellOnly = t.trade_type === 'sell';
+    const isCombined = t.trade_type === 'buy' && t.has_sell;
+    const badgeClass = isSellOnly ? 'badge-sell' : isCombined ? 'badge-buysell' : 'badge-buy';
+    const badgeLabel = isSellOnly ? 'Sell' : isCombined ? 'Buy+Sell' : 'Buy';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text-muted)">${t.row}</td>
+      <td style="font-family:monospace;font-size:12px;letter-spacing:0.3px">${t.isin}</td>
+      <td>${t.quantity}</td>
+      <td style="${!t.buy_date ? 'color:var(--text-disabled)' : ''}">${t.buy_date || '—'}</td>
+      <td class="amount" style="${!t.buy_price ? 'color:var(--text-disabled)' : ''}">
+        ${t.buy_price != null ? '₹' + Number(t.buy_price).toLocaleString() : '—'}
+      </td>
+      <td style="color:var(--text-muted)">${t.sell_date || '—'}</td>
+      <td class="amount" style="${t.sell_price == null ? 'color:var(--text-disabled)' : ''}">
+        ${t.sell_price != null ? '₹' + Number(t.sell_price).toLocaleString() : '—'}
+      </td>
+      <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+    `;
+    rawBody.appendChild(tr);
+  });
+
+  // ── FIFO summary table (only when sells exist) ────────────────────────────
+  if (hasSells && fifoSummary && fifoSummary.length) {
+    document.getElementById('fifoSection').classList.remove('hidden');
+    const fifoBody = document.getElementById('fifoBody');
+    fifoBody.innerHTML = '';
+    fifoSummary.forEach(s => {
+      const gain = s.realized_gain;
+      const gainClass = gain >= 0 ? 'gain-positive' : 'gain-negative';
+      const gainSign  = gain >= 0 ? '+' : '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-family:monospace;font-size:12px">${s.isin}</td>
+        <td>${s.total_bought}</td>
+        <td>${s.total_sold}</td>
+        <td><b>${s.net_quantity}</b></td>
+        <td class="${gainClass}">${gainSign}₹${Math.abs(gain).toLocaleString()}</td>
+      `;
+      fifoBody.appendChild(tr);
+    });
+  } else {
+    document.getElementById('fifoSection').classList.add('hidden');
+  }
+
+  // ── Net positions table ───────────────────────────────────────────────────
+  document.getElementById('netLabel').textContent =
+    `All Consolidated BUY Trades (${netTrades.length})`;
+
+  const netBody = document.getElementById('netTradeBody');
+  netBody.innerHTML = '';
+  if (netTrades.length === 0) {
+    netBody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:16px">All shares sold — nothing to add to Google Finance.</td></tr>';
+  } else {
+    netTrades.forEach(t => {
+      const tr = document.createElement('tr');
+      const totalCost = Number(t.quantity) * Number(t.buy_price);
+      tr.innerHTML = `
+        <td style="font-family:monospace;font-size:12px;letter-spacing:0.3px">${t.isin}</td>
+        <td><b>${t.quantity}</b></td>
+        <td>${t.buy_date}</td>
+        <td class="amount">₹${Number(t.buy_price).toLocaleString()}</td>
+        <td class="amount">₹${totalCost.toLocaleString()}</td>
+      `;
+      netBody.appendChild(tr);
+    });
+  }
+
+  // ── Warnings ──────────────────────────────────────────────────────────────
+  const warnDiv = document.getElementById('parseWarnings');
+  if (warnings && warnings.length) {
+    document.getElementById('warningList').innerHTML = warnings.map(w => `<li>${escHtml(w)}</li>`).join('');
+    warnDiv.classList.remove('hidden');
+  } else {
+    warnDiv.classList.add('hidden');
+  }
+}
+
+function showRunStep()     { show('stepRun'); }
+function showPreviewStep() { hide('stepRun'); show('stepPreview'); }
+
+// ── Step 3 → run ───────────────────────────────────────────────────────────────
+async function startRun() {
+  const portfolio = document.getElementById('portfolioName').value.trim() || 'My Portfolio';
+  const dryRun    = document.getElementById('chkDryRun').checked;
+  const headless  = document.getElementById('chkHeadless').checked;
+  const createNew = document.getElementById('chkCreate').checked;
+
+  const btn = document.getElementById('btnRun');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Starting…';
+
+  const fd = new FormData();
+  fd.append('task_id',           taskId);
+  fd.append('portfolio_name',    portfolio);
+  fd.append('dry_run',           dryRun);
+  fd.append('headless',          headless);
+  fd.append('create_if_missing', createNew);
+
+  try {
+    const r = await fetch('/run', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) {
+      toast(d.detail || 'Failed to start', 'error');
+      btn.disabled = false; btn.innerHTML = 'Run Automation'; return;
+    }
+    hide('stepRun'); show('stepProgress');
+    document.getElementById('progressTitle').textContent = dryRun ? 'Dry Run…' : 'Automation Running…';
+    openSSE(taskId);
+  } catch (e) {
+    toast('Network error: ' + e, 'error');
+    btn.disabled = false; btn.innerHTML = 'Run Automation';
+  }
+}
+
+// ── Step 4 → SSE progress ──────────────────────────────────────────────────────
+const LOG_ICONS = { info: '·', success: '✓', warning: '!', error: '✖', done: '★' };
+
+function openSSE(id) {
+  doneRows = 0;
+  const sec = document.getElementById('progressSection');
+  sec.classList.add('visible');
+  setProgress(0);
+
+  const es = new EventSource(`/progress/${id}`);
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    appendLog(ev);
+
+    if (ev.kind === 'success' && ev.row != null) {
+      doneRows++;
+      setProgress(Math.round((doneRows / totalRows) * 100), `${doneRows} / ${totalRows} trades`);
+    }
+    if (ev.kind === 'done') {
+      es.close();
+      setProgress(100, 'Complete');
+      document.getElementById('progressTitle').textContent = 'Done';
+      document.getElementById('btnNewRun').classList.remove('hidden');
+      checkAuth();
+    }
+    if (ev.kind === 'error') {
+      document.getElementById('progressTitle').textContent = 'Finished with errors';
+    }
+  };
+  es.onerror = () => {
+    appendLog({ kind: 'error', message: 'Connection lost.', row: null });
+    es.close();
+    document.getElementById('btnNewRun').classList.remove('hidden');
+  };
+}
+
+function appendLog(ev) {
+  const c = document.getElementById('logContainer');
+  const d = document.createElement('div');
+  d.className = `log-entry log-${ev.kind}`;
+  const now = new Date();
+  const ts  = `${h2(now.getHours())}:${h2(now.getMinutes())}:${h2(now.getSeconds())}`;
+  d.innerHTML =
+    `<span class="log-ts">${ts}</span>` +
+    `<span class="log-kind">${LOG_ICONS[ev.kind] || '·'}</span>` +
+    `<span class="log-msg">${escHtml(ev.message)}</span>` +
+    (ev.row != null ? `<span class="log-row">r${ev.row}</span>` : '');
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent  = pct + '%';
+  if (label) document.getElementById('progressLabel').textContent = label;
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function h2(n)    { return String(n).padStart(2, '0'); }
+
+function resetAll() {
+  taskId = null; trades = []; totalRows = 0; doneRows = 0;
+  fileInput.value = ''; fileInput._selectedFile = null;
+  dropzone.classList.remove('has-file', 'dragging');
+  document.getElementById('dropIcon').textContent  = '⬆';
+  document.getElementById('dropLabel').textContent = 'Drag & drop your .xlsx file here';
+  document.getElementById('fileNameBadge').classList.add('hidden');
+  document.getElementById('btnParse').disabled = true;
+  document.getElementById('logContainer').innerHTML = '';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressSection').classList.remove('visible');
+  document.getElementById('btnNewRun').classList.add('hidden');
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnRun').innerHTML = 'Run Automation';
+  hide('stepPreview'); hide('stepRun'); hide('stepProgress');
+  show('stepUpload');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type === 'error' ? ' toast-error' : type === 'ok' ? ' toast-ok' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3500);
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+checkAuth();
+</script>
+</body>
+</html>
