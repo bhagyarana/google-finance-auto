@@ -25,9 +25,6 @@ python -m venv .venv
 # Windows
 .venv\Scripts\pip install -r requirements.txt
 .venv\Scripts\playwright install chromium
-# macOS / Linux
-.venv/bin/pip install -r requirements.txt
-.venv/bin/playwright install chromium
 ```
 
 ### 3. Start the server
@@ -35,9 +32,6 @@ python -m venv .venv
 ```bash
 # Windows
 .venv\Scripts\python -m uvicorn backend.main:app --reload
-
-# macOS / Linux
-.venv/bin/python -m uvicorn backend.main:app --reload
 ```
 
 Open `http://127.0.0.1:8000` in your browser.
