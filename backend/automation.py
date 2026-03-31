@@ -28,7 +28,6 @@ from isin_resolver import resolve
 BASE_DIR      = Path(__file__).parent.parent
 AUTH_DIR      = BASE_DIR / "auth"
 AUTH_STATE    = AUTH_DIR / "gf_state.json"
-RECORDINGS_DIR = BASE_DIR / "recordings"
 
 GF_HOME      = "https://www.google.com/finance"
 GF_PORTFOLIO = "https://www.google.com/finance/portfolio"
@@ -56,7 +55,6 @@ class Event:
 async def _launch_context(
     pw: Playwright,
     headless: bool,
-    video_dir: Optional[Path] = None,
 ) -> tuple[Browser, BrowserContext]:
     AUTH_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -73,7 +71,7 @@ async def _launch_context(
     )
 
     storage = str(AUTH_STATE) if AUTH_STATE.exists() else None
-    context_kwargs: dict = dict(
+    context = await browser.new_context(
         storage_state=storage,
         viewport={"width": 1400, "height": 900},
         user_agent=(
@@ -82,12 +80,6 @@ async def _launch_context(
             "Chrome/124.0.0.0 Safari/537.36"
         ),
     )
-    if video_dir is not None:
-        video_dir.mkdir(parents=True, exist_ok=True)
-        context_kwargs["record_video_dir"] = str(video_dir)
-        context_kwargs["record_video_size"] = {"width": 1400, "height": 900}
-
-    context = await browser.new_context(**context_kwargs)
     # Spoof navigator.webdriver so Google login doesn't detect automation
     await context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return browser, context
@@ -832,7 +824,6 @@ async def run_automation(
     dry_run: bool = False,
     headless: bool = False,
     create_if_missing: bool = True,
-    record: bool = False,
 ) -> AsyncGenerator[Event, None]:
     """
     Main entry point: resolves ISINs, launches browser, fills Google Finance.
@@ -887,22 +878,8 @@ async def run_automation(
                     return
 
                 # ── Launch browser ───────────────────────────────────────────
-                run_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                video_dir  = RECORDINGS_DIR / run_ts / "video" if record else None
-                trace_path = RECORDINGS_DIR / run_ts / "trace.zip" if record else None
-
-                if record:
-                    await emit(Event("info", f"Recording enabled — output: recordings/{run_ts}/"))
-
                 async with async_playwright() as pw:
-                    browser, context = await _launch_context(
-                        pw, headless=headless, video_dir=video_dir
-                    )
-
-                    if record:
-                        await context.tracing.start(
-                            screenshots=True, snapshots=True, sources=True
-                        )
+                    browser, context = await _launch_context(pw, headless=headless)
 
                     page = await context.new_page()
 
@@ -1010,16 +987,8 @@ async def run_automation(
                             + (f" {len(failed)} skipped." if failed else "")))
 
                     finally:
-                        if record and trace_path:
-                            trace_path.parent.mkdir(parents=True, exist_ok=True)
-                            await context.tracing.stop(path=str(trace_path))
-                            await emit(Event("info", f"Trace saved → recordings/{run_ts}/trace.zip  (view: playwright show-trace <path>)"))
                         await context.close()
                         await browser.close()
-                        if record and video_dir:
-                            videos = list(video_dir.glob("*.webm"))
-                            if videos:
-                                await emit(Event("info", f"Video saved → recordings/{run_ts}/video/{videos[0].name}"))
 
             except Exception as e:
                 await emit(Event("error", f"Automation crashed: {e}", detail=str(e)))

@@ -17,12 +17,11 @@ if sys.platform == "win32":
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from automation import run_automation, AUTH_STATE, RECORDINGS_DIR
+from automation import run_automation, AUTH_STATE
 from excel_parser import parse_excel, ParseError
 from fifo import apply_fifo
 from stock_resolver import resolve as resolve_stock_name
@@ -39,8 +38,6 @@ app.add_middleware(
 FRONTEND_PATH = Path(__file__).parent.parent / "frontend" / "index.html"
 UPLOAD_DIR    = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/recordings", StaticFiles(directory=str(RECORDINGS_DIR)), name="recordings")
 
 _tasks: dict[str, dict[str, Any]] = {}
 
@@ -137,7 +134,6 @@ async def run(
     dry_run: bool = Form(False),
     headless: bool = Form(False),
     create_if_missing: bool = Form(True),
-    record: bool = Form(False),
 ):
     if task_id not in _tasks:
         raise HTTPException(404, f"Unknown task_id '{task_id}'. Please upload a file first.")
@@ -147,30 +143,10 @@ async def run(
         "dry_run":            dry_run,
         "headless":           headless,
         "create_if_missing":  create_if_missing,
-        "record":             record,
         "ready":              True,
     })
     return {"task_id": task_id, "status": "queued"}
 
-
-@app.get("/recordings")
-async def list_recordings():
-    if not RECORDINGS_DIR.exists():
-        return {"sessions": []}
-    sessions = []
-    for session_dir in sorted(RECORDINGS_DIR.iterdir(), reverse=True):
-        if not session_dir.is_dir():
-            continue
-        files = []
-        for f in sorted(session_dir.rglob("*")):
-            if f.is_file():
-                files.append({
-                    "path": f"recordings/{f.relative_to(RECORDINGS_DIR).as_posix()}",
-                    "name": f.name,
-                    "size_kb": round(f.stat().st_size / 1024, 1),
-                })
-        sessions.append({"session": session_dir.name, "files": files})
-    return {"sessions": sessions}
 
 
 @app.get("/progress/{task_id}")
@@ -187,8 +163,6 @@ async def progress(task_id: str):
     dry_run           = task.get("dry_run", False)
     headless          = task.get("headless", False)
     create_if_missing = task.get("create_if_missing", True)
-    record            = task.get("record", False)
-
     async def event_generator():
         try:
             async for event in run_automation(
@@ -197,7 +171,6 @@ async def progress(task_id: str):
                 dry_run=dry_run,
                 headless=headless,
                 create_if_missing=create_if_missing,
-                record=record,
             ):
                 yield {"data": json.dumps(event.to_dict())}
         except Exception as e:
