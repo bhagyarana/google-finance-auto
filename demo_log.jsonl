@@ -1,0 +1,83 @@
+{"ts": "23:05:44.456", "kind": "navigate", "url": "https://www.google.com/finance/portfolio"}
+{"ts": "23:05:45.160", "kind": "navigate", "url": "https://www.google.com/finance/portfolio"}
+{"kind": "click", "selector": "span.VfPpkd-vQzf8d", "text": "add\nNew portfolio", "path": "div.hi4Ose > div.uuNpUe > div.VfPpkd-WsjYwc > div > div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb > button.VfPpkd-LgbsSe > span.VfPpkd-vQzf8d", "ts": "23:05:47.020"}
+{"ts": "23:05:47.026", "kind": "navigate", "url": "https://www.google.com/finance/portfolio"}
+{"kind": "focus", "selector": "input#c38", "text": "Portfolio name", "ts": "23:05:47.237"}
+{"kind": "click", "selector": "input#c38", "text": "Portfolio name", "path": "div.VfPpkd-wzTsW > div.VfPpkd-P5QLlc > div.VfPpkd-cnG4Wd > div.RuTUJd > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c38", "ts": "23:05:48.045"}
+{"kind": "input_value", "selector": "input#c38", "value": "My Portfolio", "ts": "23:05:52.216"}
+{"kind": "input_change", "selector": "input#c38", "value": "My Portfolio", "text": "Portfolio name", "ts": "23:05:52.919"}
+{"kind": "click", "selector": "span.VfPpkd-vQzf8d", "text": "Save", "path": "div.VfPpkd-wzTsW > div.VfPpkd-P5QLlc > div.VfPpkd-T0kwCb > div.Y0mrCc > div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb > button.VfPpkd-LgbsSe > span.VfPpkd-vQzf8d", "ts": "23:05:52.998"}
+{"ts": "23:05:53.028", "kind": "navigate", "url": "https://www.google.com/finance/portfolio"}
+{"ts": "23:05:53.832", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"kind": "click", "selector": "span.VfPpkd-vQzf8d", "text": "add\nAdd investments", "path": "div.hl8N8b > div > div.oLkttd > div.uFjxEd > div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb > button.VfPpkd-LgbsSe > span.VfPpkd-vQzf8d", "ts": "23:05:55.477"}
+{"ts": "23:05:55.489", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"ts": "23:05:55.686", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"kind": "focus", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "ts": "23:05:55.689"}
+{"kind": "click", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "path": "div.mBfJdc > div > div.UjKQte > div.M52nVb > div.L6J0Pc > div.d1dlne > input.Ax4B8", "ts": "23:05:56.665"}
+{"kind": "input_value", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "value": "INFY", "ts": "23:05:58.822"}
+{"kind": "click", "selector": "div.onRPD", "text": "Infosys Ltd\nINFY : NSE (IN)\n₹1,247.80\n1.72%", "path": "div#nngdp13 > div.mLoZRc > div > div > div#nngdp130 > div > div.onRPD", "ts": "23:05:59.651"}
+{"kind": "input_change", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "value": "INFY", "text": "INFY", "ts": "23:05:59.656"}
+{"ts": "23:05:59.672", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"kind": "focus", "selector": "input#c139", "text": "0", "ts": "23:05:59.730"}
+{"kind": "input_value", "selector": "input#c139", "value": "10", "ts": "23:06:01.614"}
+{"kind": "input_change", "selector": "input#c139", "value": "10", "text": "10", "ts": "23:06:02.300"}
+{"kind": "focus", "selector": "input.whsOnd.zHQkBf", "text": "", "ts": "23:06:02.303"}
+{"kind": "click", "selector": "input.whsOnd.zHQkBf", "text": "", "path": "div.VKGqCb > div.G953Wd > div.rFrNMe > div.aCsJod > div.aXBtI > div.Xb9hP > input.whsOnd", "ts": "23:06:02.387"}
+{"kind": "click", "selector": "div[role=\"gridcell\"]", "text": "13", "path": "div.FmNPqf > div > div.CYhapf > div > div.OwJSvb > div.yhlz6e > div.pwXtMb", "ts": "23:06:03.471"}
+{"kind": "focus", "selector": "input.whsOnd.zHQkBf", "text": "13/03/2026", "ts": "23:06:03.479"}
+{"kind": "focus", "selector": "input#c142", "text": "1248.30", "ts": "23:06:04.087"}
+{"kind": "click", "selector": "input#c142", "text": "1248.30", "path": "div > div > div.PjFxfb > div.fYTO6b > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c142", "ts": "23:06:04.163"}
+{"kind": "click", "selector": "input#c142", "text": "1248.30", "path": "div > div > div.PjFxfb > div.fYTO6b > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c142", "ts": "23:06:04.324"}
+{"kind": "input_value", "selector": "input#c142", "value": "1200", "ts": "23:06:06.050"}
+{"kind": "input_change", "selector": "input#c142", "value": "1200", "text": "1200", "ts": "23:06:11.001"}
+{"kind": "click", "selector": "div.VfPpkd-RLmnJb", "text": "Save and add another", "path": "div.VfPpkd-wzTsW > div.VfPpkd-P5QLlc > div.VfPpkd-T0kwCb > div.Y0mrCc > div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb > button.VfPpkd-LgbsSe > div.VfPpkd-RLmnJb", "ts": "23:06:11.116"}
+{"ts": "23:06:11.128", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"ts": "23:06:11.217", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"ts": "23:06:11.384", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"kind": "focus", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "ts": "23:06:11.387"}
+{"kind": "click", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "path": "div.mBfJdc > div > div.UjKQte > div.M52nVb > div.L6J0Pc > div.d1dlne > input.Ax4B8", "ts": "23:06:12.525"}
+{"ts": "23:06:13.634", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"kind": "input_value", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "value": "HDFC", "ts": "23:06:14.781"}
+{"kind": "click", "selector": "div.onRPD", "text": "HDFC Bank Ltd\nHDFCBANK : NSE (IN)\n₹735.00\n2.80%", "path": "div#nngdp14 > div.mLoZRc > div > div > div#nngdp140 > div > div.onRPD", "ts": "23:06:16.788"}
+{"kind": "input_change", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "value": "HDFC", "text": "HDFC", "ts": "23:06:16.793"}
+{"kind": "focus", "selector": "input#c325", "text": "0", "ts": "23:06:16.804"}
+{"kind": "input_value", "selector": "input#c325", "value": "10", "ts": "23:06:18.970"}
+{"kind": "input_change", "selector": "input#c325", "value": "10", "text": "10", "ts": "23:06:19.297"}
+{"kind": "focus", "selector": "input.whsOnd.zHQkBf", "text": "", "ts": "23:06:19.303"}
+{"kind": "click", "selector": "input.whsOnd.zHQkBf", "text": "", "path": "div.VKGqCb > div.G953Wd > div.rFrNMe > div.aCsJod > div.aXBtI > div.Xb9hP > input.whsOnd", "ts": "23:06:19.398"}
+{"kind": "click", "selector": "div[role=\"gridcell\"]", "text": "22", "path": "div.FmNPqf > div > div.CYhapf > div > div.OwJSvb > div.yhlz6e > div.pwXtMb", "ts": "23:06:20.657"}
+{"kind": "focus", "selector": "input.whsOnd.zHQkBf", "text": "22/03/2026", "ts": "23:06:20.663"}
+{"kind": "focus", "selector": "input#c328", "text": "780.45", "ts": "23:06:21.272"}
+{"kind": "click", "selector": "input#c328", "text": "780.45", "path": "div > div > div.PjFxfb > div.fYTO6b > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c328", "ts": "23:06:21.324"}
+{"kind": "click", "selector": "input#c328", "text": "780.45", "path": "div > div > div.PjFxfb > div.fYTO6b > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c328", "ts": "23:06:21.461"}
+{"kind": "input_value", "selector": "input#c328", "value": "750", "ts": "23:06:23.658"}
+{"kind": "input_change", "selector": "input#c328", "value": "750", "text": "750", "ts": "23:06:24.326"}
+{"kind": "click", "selector": "span.VfPpkd-vQzf8d", "text": "Save and add another", "path": "div.VfPpkd-wzTsW > div.VfPpkd-P5QLlc > div.VfPpkd-T0kwCb > div.Y0mrCc > div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb > button.VfPpkd-LgbsSe > span.VfPpkd-vQzf8d", "ts": "23:06:24.427"}
+{"ts": "23:06:24.455", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08"}
+{"ts": "23:06:24.460", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"ts": "23:06:24.531", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"ts": "23:06:24.727", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"kind": "focus", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "ts": "23:06:24.729"}
+{"kind": "click", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "path": "div.mBfJdc > div > div.UjKQte > div.M52nVb > div.L6J0Pc > div.d1dlne > input.Ax4B8", "ts": "23:06:25.714"}
+{"kind": "input_value", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "value": "ICICI", "ts": "23:06:27.441"}
+{"kind": "click", "selector": "div.onRPD", "text": "ICICI Bank Ltd\nICICIBANK : NSE (IN)\n₹1,211.80\n1.78%", "path": "div#nngdp20 > div.mLoZRc > div > div > div#nngdp200 > div > div.onRPD", "ts": "23:06:28.209"}
+{"kind": "input_change", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "value": "ICICI", "text": "ICICI", "ts": "23:06:28.214"}
+{"ts": "23:06:28.224", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"kind": "focus", "selector": "input#c421", "text": "0", "ts": "23:06:28.226"}
+{"kind": "input_value", "selector": "input#c421", "value": "1", "ts": "23:06:30.116"}
+{"kind": "input_value", "selector": "input#c421", "value": "15", "ts": "23:06:31.623"}
+{"kind": "input_change", "selector": "input#c421", "value": "15", "text": "15", "ts": "23:06:32.145"}
+{"kind": "focus", "selector": "input.whsOnd.zHQkBf", "text": "", "ts": "23:06:32.150"}
+{"kind": "click", "selector": "input.whsOnd.zHQkBf", "text": "", "path": "div.VKGqCb > div.G953Wd > div.rFrNMe > div.aCsJod > div.aXBtI > div.Xb9hP > input.whsOnd", "ts": "23:06:32.223"}
+{"kind": "click", "selector": "div[role=\"gridcell\"]", "text": "22", "path": "div.FmNPqf > div > div.CYhapf > div > div.OwJSvb > div.yhlz6e > div.pwXtMb", "ts": "23:06:33.415"}
+{"kind": "focus", "selector": "input.whsOnd.zHQkBf", "text": "22/03/2026", "ts": "23:06:33.420"}
+{"kind": "focus", "selector": "input#c424", "text": "1245.40", "ts": "23:06:33.995"}
+{"kind": "click", "selector": "input#c424", "text": "1245.40", "path": "div > div > div.PjFxfb > div.fYTO6b > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c424", "ts": "23:06:34.081"}
+{"kind": "click", "selector": "input#c424", "text": "1245.40", "path": "div > div > div.PjFxfb > div.fYTO6b > div.Ufn6O > label.VfPpkd-fmcmS-yrriRe > input#c424", "ts": "23:06:34.240"}
+{"kind": "input_value", "selector": "input#c424", "value": "1200", "ts": "23:06:36.034"}
+{"kind": "input_change", "selector": "input#c424", "value": "1200", "text": "1200", "ts": "23:06:38.243"}
+{"kind": "click", "selector": "div.VfPpkd-RLmnJb", "text": "Save and add another", "path": "div.VfPpkd-wzTsW > div.VfPpkd-P5QLlc > div.VfPpkd-T0kwCb > div.Y0mrCc > div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb > button.VfPpkd-LgbsSe > div.VfPpkd-RLmnJb", "ts": "23:06:38.350"}
+{"ts": "23:06:38.365", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"ts": "23:06:38.438", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"ts": "23:06:38.619", "kind": "navigate", "url": "https://www.google.com/finance/portfolio/3a263dd8-0f00-44fe-beb2-f0bc8f565b08?window=1M"}
+{"kind": "focus", "selector": "input[aria-label=\"Type an investment name or symbol\"]", "text": "Type an investment name or symbol", "ts": "23:06:38.622"}

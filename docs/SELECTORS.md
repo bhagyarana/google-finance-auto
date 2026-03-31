@@ -2,7 +2,7 @@
 
 This document records every verified CSS selector and interaction pattern for the Google Finance portfolio UI.
 
-**Last verified**: 2026-03-29 via `demo_log.jsonl` (live demo recording).
+**Last verified**: 2026-03-31 via `demo_log.jsonl` (live demo recording — 82 events, 3 stocks added).
 
 Whenever Google Finance updates its UI, re-run `demo_logger.py` from the repo root and update this file.
 
@@ -53,19 +53,31 @@ for link in await page.locator("a").all():
 
 ### Open "Add investment" dialog
 
-The button is a Material Design FAB. Its inner ripple element is `div.VfPpkd-RLmnJb`.
+**Important**: The button container div changes depending on portfolio state.
+
+| Portfolio state | Container div | Span text |
+|-----------------|---------------|-----------|
+| Has stocks | `div.a4CLte` | `"add\nInvestment"` |
+| Empty (first add) | `div.uFjxEd` | `"add\nAdd investments"` |
 
 ```python
-# Primary — click the button that contains the ripple
-btn = page.locator('button:has(div.VfPpkd-RLmnJb)')
+# Primary — non-empty portfolio (verified 2026-03-31)
+btn = page.locator("div.a4CLte button.VfPpkd-LgbsSe")
 
-# Fallback — click the ripple directly (observed in demo)
-fab = page.locator("div.VfPpkd-RLmnJb").first
+# Primary — empty portfolio
+btn = page.locator("div.uFjxEd button.VfPpkd-LgbsSe")
+
+# Span-text fallback (has_text is case-insensitive substring match)
+btn = page.locator("button span.VfPpkd-vQzf8d", has_text="Investment")
 ```
 
-Raw log evidence:
+**Do NOT use** `button:has(div.VfPpkd-RLmnJb)` as a fallback — it also matches the
+`+ New list` tab button, causing it to open a "Create a new list" dialog instead.
+
+Raw log evidence (2026-03-31):
 ```jsonl
-{"kind":"click","selector":"div.VfPpkd-RLmnJb","text":""}
+{"kind":"click","selector":"span.VfPpkd-vQzf8d","text":"add\nAdd investments","path":"div.hl8N8b > div > div.oLkttd > div.uFjxEd > ... > button > span"}
+{"kind":"click","selector":"span.VfPpkd-vQzf8d","text":"add\nInvestment","path":"div.hl8N8b > div > div.T7rHJe > div.a4CLte > ... > button > span"}
 ```
 
 ---
@@ -102,20 +114,28 @@ Raw log evidence:
 
 ### 3. Select first suggestion
 
-The dropdown suggestion row appears as a plain `div` with text like `"RELIANCE : NSE (IN)"`.
+Suggestion rows observed (2026-03-31):
+- **`div.onRPD`** — outer clickable row (always present, recommended)
+- **`div.CrPloe`** — inner content div, child of `div.onRPD`
+
+Both contain the full text: `"Infosys Ltd\nINFY : NSE (IN)\n₹1,247.80\n1.72%"`
 
 ```python
-# Try listbox role first
-suggestion = page.locator("[role='listbox'] [role='option']").first
-# Fallback
-suggestion = page.locator("ul[role='listbox'] li").first
-# Last resort — div containing the query text
-suggestion = page.locator("div").filter(has_text=query).first
+# Primary — outer row, prefer NSE in text
+rows = page.locator("div.onRPD")
+for item in await rows.all():
+    if "NSE" in (await item.inner_text()).upper():
+        await item.click()
+        break
+
+# Fallback — inner content div
+rows = page.locator("div.CrPloe")
 ```
 
-Raw log evidence:
+Raw log evidence (2026-03-31):
 ```jsonl
-{"kind":"click","selector":"div","text":"RELIANCE : NSE (IN)"}
+{"kind":"click","selector":"div.onRPD","text":"Infosys Ltd\nINFY : NSE (IN)\n₹1,247.80\n1.72%"}
+{"kind":"click","selector":"div.CrPloe","text":"Reliance Industries Ltd\nRELIANCE : NSE (IN)\n₹1,348.30\n0.015%"}
 ```
 
 ### 4. Fill Quantity
@@ -128,7 +148,8 @@ qty = page.get_by_label("Quantity")
 qty = page.get_by_label("Shares")
 ```
 
-Use `triple_click()` then `type()` to clear any pre-filled value.
+Use `click(click_count=3)` then `fill()` to clear any pre-filled value.
+Note: `triple_click()` does not exist on Playwright's Locator — use `click(click_count=3)`.
 
 Raw log evidence:
 ```jsonl

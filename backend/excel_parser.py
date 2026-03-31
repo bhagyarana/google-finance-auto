@@ -26,6 +26,7 @@ class Trade:
     sell_price: Optional[float]
     has_sell: bool
     trade_type: str = "buy"    # "buy" | "sell"
+    exchange: str = "NSE"      # "NSE" | "BSE" — used when stock_name format is detected
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -191,7 +192,19 @@ def _parse_tradebook(df: pd.DataFrame) -> tuple[list[Trade], list[str]]:
 
 
 _CLASSIC_ALIASES: dict[str, list[str]] = {
-    "isin":       ["isin", "symbol", "ticker", "stock"],
+    "isin":       ["isin", "symbol", "ticker"],
+    "quantity":   ["quantity", "qty", "shares"],
+    "buy_date":   ["buy date", "buy_date", "purchase date", "date", "transaction date"],
+    "buy_price":  ["buy price", "buy_price", "purchase price", "cost price"],
+    "sell_date":  ["sell date", "sell_date"],
+    "sell_price": ["sell price", "sell_price"],
+}
+
+# Stock-name format aliases (no ISIN required)
+_STOCKNAME_ALIASES: dict[str, list[str]] = {
+    "stock_name": ["stock name", "stock_name", "company", "name", "stock", "script",
+                   "scrip", "security", "company name"],
+    "exchange":   ["exchange", "exch", "market", "listing"],
     "quantity":   ["quantity", "qty", "shares"],
     "buy_date":   ["buy date", "buy_date", "purchase date", "date", "transaction date"],
     "buy_price":  ["buy price", "buy_price", "purchase price", "cost price"],
@@ -309,6 +322,146 @@ def _parse_classic(df: pd.DataFrame, skip_rows: int = 0) -> tuple[list[Trade], l
     return trades, errors
 
 
+def _is_stockname_format(columns: list[str]) -> bool:
+    """
+    True if the sheet has a stock-name column but NO isin/symbol/ticker column.
+    Allows users to supply  Stock Name | Exchange | Quantity | Buy Date | Buy Price
+    without needing ISINs.
+    """
+    normed = [_normalise(c) for c in columns]
+    has_name = any(
+        alias in n
+        for n in normed
+        for alias in ("stock name", "stock_name", "company name", "company", "scrip", "script", "security")
+    )
+    has_isin = any(n in ("isin",) or "ticker" in n for n in normed)
+    return has_name and not has_isin
+
+
+def _parse_stockname(df: pd.DataFrame, skip_rows: int = 0) -> tuple[list[Trade], list[str]]:
+    """
+    Parse a Stock-Name format spreadsheet.
+
+    Required columns : stock_name, quantity, buy_date, buy_price
+    Optional columns : exchange (default NSE), sell_date, sell_price
+    """
+    cols: dict[str, Optional[str]] = {}
+    for key, aliases in _STOCKNAME_ALIASES.items():
+        cols[key] = _find_col(df, *aliases)
+
+    missing = [k for k in ("stock_name", "quantity", "buy_date", "buy_price") if cols[k] is None]
+    if missing:
+        raise ParseError(
+            f"Stock-name format detected but required columns missing: {missing}. "
+            f"Available columns: {list(df.columns)}"
+        )
+
+    trades: list[Trade] = []
+    errors: list[str] = []
+
+    for idx, row in df.iterrows():
+        row_num = int(idx) + 1 + skip_rows
+
+        def get(key: str):
+            c = cols[key]
+            return row[c] if c and c in df.columns else None
+
+        # Stock name (required)
+        name_raw = get("stock_name")
+        if not name_raw or str(name_raw).strip().lower() in ("nan", ""):
+            errors.append(f"Row {row_num}: Stock name is empty, skipping.")
+            continue
+        stock_name = str(name_raw).strip()
+
+        # Exchange (optional, default NSE)
+        exch_raw = get("exchange")
+        exchange = "NSE"
+        if exch_raw and str(exch_raw).strip().lower() not in ("nan", ""):
+            exch_str = str(exch_raw).strip().upper()
+            if exch_str in ("NSE", "BSE", "BOM", "BOMBAY"):
+                exchange = "BSE" if exch_str in ("BSE", "BOM", "BOMBAY") else "NSE"
+
+        # Quantity (required)
+        try:
+            qty = float(str(get("quantity")).replace(",", ""))
+            if qty <= 0:
+                raise ValueError("non-positive")
+        except (ValueError, TypeError):
+            errors.append(f"Row {row_num}: Invalid quantity '{get('quantity')}', skipping.")
+            continue
+
+        # Optional sell fields
+        sell_date:  Optional[str]   = None
+        sell_price: Optional[float] = None
+        has_sell = False
+
+        sd_raw = get("sell_date")
+        sp_raw = get("sell_price")
+
+        if sd_raw and str(sd_raw).strip().lower() not in ("nan", "none", ""):
+            try:
+                sell_date = _parse_date(sd_raw)
+            except ValueError as e:
+                errors.append(f"Row {row_num}: Invalid sell date — {e}, ignoring sell.")
+
+        if sp_raw and str(sp_raw).strip().lower() not in ("nan", "none", ""):
+            try:
+                sell_price = float(str(sp_raw).replace(",", ""))
+            except (ValueError, TypeError):
+                errors.append(f"Row {row_num}: Invalid sell price '{sp_raw}', ignoring sell.")
+
+        if sell_date and sell_price is not None:
+            has_sell = True
+
+        # Buy date / price (required unless sell-only)
+        bd_raw = get("buy_date")
+        bp_raw = get("buy_price")
+        buy_date_missing  = not bd_raw or str(bd_raw).strip().lower() in ("nan", "none", "")
+        buy_price_missing = not bp_raw or str(bp_raw).strip().lower() in ("nan", "none", "")
+
+        if buy_date_missing and buy_price_missing:
+            if not has_sell:
+                errors.append(f"Row {row_num}: Neither buy nor sell data found, skipping.")
+                continue
+            # Sell-only row
+            trades.append(Trade(
+                row=row_num, isin="", symbol=stock_name, quantity=qty,
+                buy_date=None, buy_price=None,
+                sell_date=sell_date, sell_price=sell_price,
+                has_sell=True, trade_type="sell", exchange=exchange,
+            ))
+            continue
+
+        if buy_date_missing:
+            errors.append(f"Row {row_num}: Buy date is empty, skipping.")
+            continue
+        try:
+            buy_date = _parse_date(bd_raw)
+            if buy_date is None:
+                raise ValueError("empty")
+        except ValueError as e:
+            errors.append(f"Row {row_num}: Invalid buy date — {e}, skipping.")
+            continue
+
+        if buy_price_missing:
+            errors.append(f"Row {row_num}: Buy price is empty, skipping.")
+            continue
+        try:
+            buy_price = float(str(bp_raw).replace(",", ""))
+        except (ValueError, TypeError):
+            errors.append(f"Row {row_num}: Invalid buy price '{bp_raw}', skipping.")
+            continue
+
+        trades.append(Trade(
+            row=row_num, isin="", symbol=stock_name, quantity=qty,
+            buy_date=buy_date, buy_price=buy_price,
+            sell_date=sell_date, sell_price=sell_price,
+            has_sell=has_sell, trade_type="buy", exchange=exchange,
+        ))
+
+    return trades, errors
+
+
 def parse_excel(path: str | Path, skip_rows: int = 0) -> tuple[list[Trade], list[str]]:
     path = Path(path)
     if not path.exists():
@@ -326,6 +479,8 @@ def parse_excel(path: str | Path, skip_rows: int = 0) -> tuple[list[Trade], list
 
     if _is_tradebook_format(list(df.columns)):
         trades, errors = _parse_tradebook(df)
+    elif _is_stockname_format(list(df.columns)):
+        trades, errors = _parse_stockname(df, skip_rows=skip_rows)
     else:
         trades, errors = _parse_classic(df, skip_rows=skip_rows)
 

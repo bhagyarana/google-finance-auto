@@ -563,7 +563,8 @@ td.amount.positive { color: var(--green); }
         <thead>
           <tr>
             <th>Row</th>
-            <th>Symbol / ISIN</th>
+            <th>Stock / ISIN</th>
+            <th>Exch</th>
             <th>Qty</th>
             <th>Buy Date</th>
             <th>Buy Price</th>
@@ -806,10 +807,25 @@ function renderPreview(rawTrades, netTrades, fifoSummary, warnings) {
     const isCombined = t.trade_type === 'buy' && t.has_sell;
     const badgeClass = isSellOnly ? 'badge-sell' : isCombined ? 'badge-buysell' : 'badge-buy';
     const badgeLabel = isSellOnly ? 'Sell' : isCombined ? 'Buy+Sell' : 'Buy';
+
+    // For stock-name format: isin is empty, symbol holds resolved ticker (or raw name)
+    const isStockNameFormat = !t.isin;
+    const symbolDisplay = isStockNameFormat
+      ? escHtml(t.symbol)
+      : `<span style="font-family:monospace;font-size:12px;letter-spacing:0.3px">${escHtml(t.isin)}</span>`
+        + (t.symbol && t.symbol !== t.isin
+            ? `<br><span style="font-size:10.5px;color:var(--green);font-weight:600">${escHtml(t.symbol)}</span>`
+            : '');
+
+    const exchDisplay = (t.exchange && t.exchange !== 'NSE')
+      ? `<span style="font-size:11px;color:var(--text-muted)">${escHtml(t.exchange)}</span>`
+      : `<span style="font-size:11px;color:var(--text-disabled)">NSE</span>`;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="color:var(--text-muted)">${t.row}</td>
-      <td style="font-family:monospace;font-size:12px;letter-spacing:0.3px">${t.isin}</td>
+      <td>${symbolDisplay}</td>
+      <td>${exchDisplay}</td>
       <td>${t.quantity}</td>
       <td style="${!t.buy_date ? 'color:var(--text-disabled)' : ''}">${t.buy_date || '—'}</td>
       <td class="amount" style="${!t.buy_price ? 'color:var(--text-disabled)' : ''}">
@@ -859,8 +875,13 @@ function renderPreview(rawTrades, netTrades, fifoSummary, warnings) {
     netTrades.forEach(t => {
       const tr = document.createElement('tr');
       const totalCost = Number(t.quantity) * Number(t.buy_price);
+      // Primary: show ticker/symbol. Secondary: show ISIN in muted text below if different.
+      const symCell = t.symbol && t.symbol !== t.isin
+        ? `<b style="font-family:monospace;font-size:13px">${escHtml(t.symbol)}</b>`
+          + (t.isin ? `<br><span style="font-size:10.5px;color:var(--text-muted)">${escHtml(t.isin)}</span>` : '')
+        : `<span style="font-family:monospace;font-size:12px;letter-spacing:0.3px">${escHtml(t.isin || t.symbol)}</span>`;
       tr.innerHTML = `
-        <td style="font-family:monospace;font-size:12px;letter-spacing:0.3px">${t.isin}</td>
+        <td>${symCell}</td>
         <td><b>${t.quantity}</b></td>
         <td>${t.buy_date}</td>
         <td class="amount">₹${Number(t.buy_price).toLocaleString()}</td>

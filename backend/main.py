@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from automation import run_automation, AUTH_STATE, RECORDINGS_DIR
 from excel_parser import parse_excel, ParseError
 from fifo import apply_fifo
+from stock_resolver import resolve as resolve_stock_name
 
 app = FastAPI(title="Google Finance Bulk Upload", version="1.0.0")
 
@@ -84,8 +85,23 @@ async def upload_excel(
         tmp.close()
 
         raw_trades, parse_warnings = parse_excel(tmp.name, skip_rows=skip_rows)
+
+        # Resolve stock names → NSE/BSE tickers for stock-name format uploads
+        # (ISIN-based trades are resolved later inside automation.py)
+        resolve_warnings: list[str] = []
+        stock_name_trades = [t for t in raw_trades if t.isin == ""]
+        if stock_name_trades:
+            for trade in stock_name_trades:
+                resolved = resolve_stock_name(trade.symbol, trade.exchange)
+                if resolved == trade.symbol:
+                    resolve_warnings.append(
+                        f"Row {trade.row}: Could not resolve '{trade.symbol}' ({trade.exchange}) "
+                        f"to a ticker — will search by name in Google Finance."
+                    )
+                trade.symbol = resolved
+
         fifo_result = apply_fifo(raw_trades)
-        all_warnings = parse_warnings + fifo_result.warnings
+        all_warnings = parse_warnings + resolve_warnings + fifo_result.warnings
 
         task_id = str(uuid.uuid4())
         _tasks[task_id] = {

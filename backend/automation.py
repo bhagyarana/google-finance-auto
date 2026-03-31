@@ -358,7 +358,7 @@ async def _rename_portfolio(page: Page, name: str, emit) -> None:
         name_input = page.locator("input:not([disabled])").first
 
     await name_input.wait_for(state="visible", timeout=8_000)
-    await name_input.triple_click()
+    await name_input.click(click_count=3)
     await name_input.fill(name)
     await asyncio.sleep(0.3)
 
@@ -394,68 +394,105 @@ async def _open_portfolio(page: Page, name: str, emit) -> bool:
 
 async def _open_add_investment_dialog(page: Page) -> None:
     """
-    Open the 'Add investment' dialog.
+    Open the 'Add investment' dialog and verify the stock search input is present.
 
-    Observed: the FAB / floating action button uses Material ripple (div.VfPpkd-RLmnJb).
-    We try several selectors in order.
+    Verified selectors (demo_log.jsonl 2026-03-31):
+      Portfolio with holdings : div.a4CLte > ... > button.VfPpkd-LgbsSe
+                                span text = "add\\nInvestment"
+      Empty portfolio         : div.uFjxEd > ... > button.VfPpkd-LgbsSe
+                                span text = "add\\nAdd investments"
 
-    The Material trans-layer scrim (div.KL4X6e.TuA45b) can linger after a
-    dialog closes and will intercept pointer events on the FAB. We wait for it
-    to disappear before attempting any click, and fall back to a JS/force click
-    if it still blocks.
+    IMPORTANT — do NOT use has_text="Investment" without scoping to the container
+    divs: the "Investments" tab button also matches that substring and appears
+    first in the DOM, causing the wrong element to be clicked.
     """
+    # Close any stray dialog / overlay that may be open
+    for close_sel in ['button[aria-label="Close"]', 'button[aria-label="close"]']:
+        cl = page.locator(close_sel)
+        if await cl.count() > 0:
+            try:
+                await cl.first.click(timeout=2_000)
+                await asyncio.sleep(0.5)
+            except Exception:
+                pass
+
     # Wait for any lingering Material scrim/overlay to clear
     try:
         await page.locator("div.KL4X6e.TuA45b").wait_for(state="hidden", timeout=6_000)
     except PWTimeout:
-        pass  # overlay not found or didn't clear — proceed anyway
+        pass
 
-    clicked = False
+    # Wait for the portfolio page to be ready — the button container must exist
+    for sel in ["div.a4CLte", "div.uFjxEd"]:
+        try:
+            await page.locator(sel).wait_for(state="visible", timeout=8_000)
+            break
+        except PWTimeout:
+            continue
 
-    # Text-based check first — observed text changed to "Add investments" (2026-03-29)
-    for label in ["Add investments", "Add investment"]:
-        loc = page.locator("span.VfPpkd-vQzf8d", has_text=label)
+    # ── Click the correct button ─────────────────────────────────────────────
+
+    async def _try_click(loc) -> bool:
         if await loc.count() > 0:
             try:
                 await loc.first.click(timeout=5_000)
             except PWTimeout:
                 await loc.first.click(force=True)
-            clicked = True
-            break
+            return True
+        return False
+
+    clicked = (
+        # 1. Container-scoped — most reliable (verified 2026-03-31)
+        await _try_click(page.locator("div.a4CLte button.VfPpkd-LgbsSe"))
+        or await _try_click(page.locator("div.uFjxEd button.VfPpkd-LgbsSe"))
+        # 2. Regex text match — "Investment" exact word, NOT "Investments"
+        #    re.compile uses Python regex; \bInvestment\b won't match "Investments"
+        or await _try_click(page.locator("button span.VfPpkd-vQzf8d",
+                                         has_text=re.compile(r"\bInvestment\b")))
+        or await _try_click(page.locator("button span.VfPpkd-vQzf8d",
+                                         has_text=re.compile(r"Add investments", re.I)))
+        # 3. aria-label fallbacks
+        or await _try_click(page.locator('button[aria-label="Add investments"]'))
+        or await _try_click(page.locator('button[aria-label="Investment"]'))
+    )
 
     if not clicked:
-        for sel in [
-            'button[aria-label="Add investments"]',
-            'button[aria-label="Add investment"]',
-            'button[aria-label="Add"]',
-            # Material FAB button — the ripple div is the child, click the parent button
-            'button:has(div.VfPpkd-RLmnJb)',
-        ]:
-            loc = page.locator(sel)
-            if await loc.count() > 0:
-                try:
-                    await loc.first.click(timeout=5_000)
-                except PWTimeout:
-                    await loc.first.click(force=True)
-                clicked = True
-                break
+        raise RuntimeError(
+            "Could not find the '+ Investment' / 'Add investments' button. "
+            "Run demo_logger.py to re-capture the selector."
+        )
 
-    if not clicked:
-        # Last resort: click the FAB ripple element directly (as observed in demo)
-        fab = page.locator("div.VfPpkd-RLmnJb").first
-        await fab.wait_for(state="visible", timeout=10_000)
-        try:
-            await fab.click()
-        except PWTimeout:
-            await fab.click(force=True)
-
-    # Wait for the add-investment dialog to be visible before returning
+    # ── Verify the correct dialog opened ────────────────────────────────────
+    # The investment dialog always contains the stock search input.
+    # If something else opened (sort menu, portfolio breakdown, etc.) we close
+    # it and raise so the retry loop can re-navigate and try again.
+    search_input = page.locator('input[aria-label="Type an investment name or symbol"]')
     try:
-        await page.wait_for_selector('[role="dialog"]', state="visible", timeout=10_000)
+        await search_input.wait_for(state="visible", timeout=8_000)
     except PWTimeout:
-        await asyncio.sleep(1.0)  # last-resort settle if dialog selector changed
-    else:
-        await asyncio.sleep(0.4)
+        # Wrong dialog — close whatever opened and fail so retry can recover
+        for close_sel in [
+            'button[aria-label="Close"]',
+            'button[aria-label="close"]',
+            'span.VfPpkd-vQzf8d:has-text("Close")',
+            'span.VfPpkd-vQzf8d:has-text("Cancel")',
+        ]:
+            cl = page.locator(close_sel)
+            if await cl.count() > 0:
+                try:
+                    await cl.first.click(timeout=2_000)
+                except Exception:
+                    pass
+                break
+        # Also press Escape to dismiss any overlay
+        await page.keyboard.press("Escape")
+        await asyncio.sleep(0.5)
+        raise RuntimeError(
+            "Clicked a button but the stock search input never appeared — "
+            "wrong dialog opened. Will retry."
+        )
+
+    await asyncio.sleep(0.3)
 
 
 async def _select_stock_tab(page: Page) -> None:
@@ -514,24 +551,31 @@ async def _search_and_select_stock(page: Page, query: str) -> None:
     await search.fill(query)
     await asyncio.sleep(1.8)  # wait for suggestions to load
 
-    # Demo log (2026-03-30): suggestion rows use span.T35sFe for the exchange
-    # label (e.g. ": NSE (IN)") and div.CrPloe for the full row.
-    # Strategy: click the NSE exchange span directly (most precise), otherwise
-    # fall back through progressively broader selectors.
+    # ── Verified suggestion selectors (demo_log.jsonl 2026-03-31) ───────────
+    # Suggestion rows observed:
+    #   div.onRPD  — outer clickable row  (always present)
+    #   div.CrPloe — inner content div    (child of div.onRPD)
+    # Both contain full text: "Infosys Ltd\nINFY : NSE (IN)\n₹1,247.80\n..."
+    # Strategy: wait for rows, prefer NSE in text, click outer row.
 
-    # Wait for at least one suggestion to appear
-    await page.locator("div.CrPloe, [role='listbox'] [role='option']").first.wait_for(
+    await page.locator("div.onRPD, div.CrPloe, [role='listbox'] [role='option']").first.wait_for(
         state="visible", timeout=8_000
     )
 
-    # 1. Prefer: exchange span containing NSE (observed: span.T35sFe ": NSE (IN)")
-    nse_span = page.locator("span.T35sFe", has_text="NSE")
-    if await nse_span.count() > 0:
-        await nse_span.first.click()
+    # 1. Prefer div.onRPD rows (outer clickable row) with NSE in text
+    rows = page.locator("div.onRPD")
+    if await rows.count() > 0:
+        for item in await rows.all():
+            txt = (await item.inner_text()).strip().upper()
+            if "NSE" in txt:
+                await item.click()
+                await asyncio.sleep(0.8)
+                return
+        await rows.first.click()
         await asyncio.sleep(0.8)
         return
 
-    # 2. Full suggestion row (div.CrPloe) — prefer NSE in text
+    # 2. Fallback: div.CrPloe (inner content)
     rows = page.locator("div.CrPloe")
     if await rows.count() > 0:
         for item in await rows.all():
@@ -674,26 +718,20 @@ async def _fill_price(page: Page, price: float) -> None:
         price_input = page.locator('[role="dialog"] input[type="text"]').last
 
     await price_input.wait_for(state="visible", timeout=8_000)
-    await price_input.triple_click()
+    await price_input.click(click_count=3)
     await asyncio.sleep(0.2)
     await price_input.fill(str(price))
 
 
 async def _save_transaction(page: Page) -> None:
     """
-    Save the transaction form.
-
-    Demo log (2026-03-30): buttons observed are 'Save and add another' and
-    plain 'Save' (span.VfPpkd-vQzf8d).  We click 'Save' (exact match preferred
-    over 'Save and add another') so we stay in single-transaction mode.
-    Fallback: div.VfPpkd-RLmnJb inside a button in the dialog footer.
+    Save the transaction and close the dialog (last trade in a batch).
+    Clicks plain 'Save', explicitly avoiding 'Save and add another'.
     """
     dialog = page.locator('[role="dialog"]')
+    scope = dialog if await dialog.count() > 0 else page
 
-    # Prefer exact "Save" span — avoids accidentally clicking "Save and add another"
     for label in ["Save", "Done", "Add"]:
-        # Scope to dialog if visible, to avoid matching page-level buttons
-        scope = dialog if await dialog.count() > 0 else page
         btn = scope.locator("span.VfPpkd-vQzf8d", has_text=label).filter(
             has_not_text="and add another"
         )
@@ -710,50 +748,78 @@ async def _save_transaction(page: Page) -> None:
     raise RuntimeError("Could not find Save/Done button in transaction dialog.")
 
 
+async def _save_and_add_another(page: Page) -> None:
+    """
+    Save the current trade and keep the dialog open for the next one.
+
+    Verified (demo_log.jsonl 2026-03-31):
+      span text : "Save and add another"
+      path      : dialog footer > button.VfPpkd-LgbsSe > span.VfPpkd-vQzf8d
+                  OR > div.VfPpkd-RLmnJb  (ripple click also works)
+
+    After clicking, the dialog resets and auto-focuses the stock search input.
+    """
+    dialog = page.locator('[role="dialog"]')
+    scope = dialog if await dialog.count() > 0 else page
+
+    btn = scope.locator("span.VfPpkd-vQzf8d", has_text="Save and add another")
+    if await btn.count() == 0:
+        btn = page.get_by_role("button", name="Save and add another")
+
+    if await btn.count() > 0:
+        await btn.first.click()
+    else:
+        raise RuntimeError("Could not find 'Save and add another' button.")
+
+    # Wait for dialog to reset — search input should be visible and empty
+    search = page.locator('input[aria-label="Type an investment name or symbol"]')
+    await search.wait_for(state="visible", timeout=8_000)
+    await asyncio.sleep(0.3)
+
+
 # ---------------------------------------------------------------------------
 # Per-trade processing
 # ---------------------------------------------------------------------------
 
-async def _process_trade(page: Page, trade: Trade, portfolio_name: str, emit) -> None:
-    """Add buy (and optional sell) for a single trade."""
+async def _process_trade(
+    page: Page,
+    trade: Trade,
+    emit,
+    *,
+    dialog_already_open: bool = False,
+    keep_open: bool = False,
+) -> None:
+    """
+    Fill and save one BUY trade inside the Add investment dialog.
 
-    # --- BUY ---
-    await emit(Event("info", f"Opening Add investment dialog…", row=trade.row))
-    await _open_add_investment_dialog(page)
-
-    await _select_stock_tab(page)
+    dialog_already_open : True when the dialog is already showing after a
+                          previous "Save and add another" click — skip opening.
+    keep_open           : True for all trades except the last — click
+                          "Save and add another" instead of "Save".
+    """
+    if not dialog_already_open:
+        await emit(Event("info", "Opening Add investment dialog…", row=trade.row))
+        await _open_add_investment_dialog(page)
+        await _select_stock_tab(page)
 
     await emit(Event("info", f"Searching for '{trade.symbol}'…", row=trade.row))
     await _search_and_select_stock(page, trade.symbol)
 
-    await emit(Event("info", f"Filling BUY form: qty={trade.quantity}, date={trade.buy_date}, price={trade.buy_price}", row=trade.row))
+    await emit(Event("info",
+        f"Filling form: qty={trade.quantity}, date={trade.buy_date}, price={trade.buy_price}",
+        row=trade.row))
     await _fill_quantity(page, trade.quantity)
     await _select_calendar_date(page, trade.buy_date)
     await _fill_price(page, trade.buy_price)
-    await _save_transaction(page)
 
-    await emit(Event("success", f"BUY saved — {trade.symbol} x{trade.quantity} @ {trade.buy_price}", row=trade.row))
-
-    # --- SELL (optional) ---
-    if trade.has_sell:
-        await emit(Event("info", f"Opening Add investment dialog for SELL…", row=trade.row))
-        await _open_add_investment_dialog(page)
-        await _select_stock_tab(page)
-        await _search_and_select_stock(page, trade.symbol)
-
-        # Switch to Sell tab if present
-        sell_tab = page.get_by_role("tab", name="Sell")
-        if await sell_tab.count() > 0:
-            await sell_tab.click()
-            await asyncio.sleep(0.4)
-
-        await emit(Event("info", f"Filling SELL form: qty={trade.quantity}, date={trade.sell_date}, price={trade.sell_price}", row=trade.row))
-        await _fill_quantity(page, trade.quantity)
-        await _select_calendar_date(page, trade.sell_date)
-        await _fill_price(page, trade.sell_price)
+    if keep_open:
+        await _save_and_add_another(page)
+    else:
         await _save_transaction(page)
 
-        await emit(Event("success", f"SELL saved — {trade.symbol} x{trade.quantity} @ {trade.sell_price}", row=trade.row))
+    await emit(Event("success",
+        f"BUY saved — {trade.symbol} x{trade.quantity} @ {trade.buy_price}",
+        row=trade.row))
 
 
 # ---------------------------------------------------------------------------
@@ -797,9 +863,13 @@ async def run_automation(
             try:
                 # ── Resolve all symbols upfront ──────────────────────────────
                 _isin_pattern = re.compile(r"^[A-Z]{2}[A-Z0-9]{10}$")
-                await emit(Event("info", f"Resolving {len(trades)} ISIN symbol(s)…"))
+                await emit(Event("info", f"Resolving {len(trades)} symbol(s)…"))
                 for trade in trades:
-                    if trade.symbol and trade.symbol != trade.isin and not _isin_pattern.match(trade.symbol):
+                    if not trade.isin:
+                        # Stock-name format: symbol already resolved by main.py
+                        exch = getattr(trade, "exchange", "NSE") or "NSE"
+                        await emit(Event("info", f"  {trade.symbol} ({exch}) — name resolved", row=trade.row))
+                    elif trade.symbol and trade.symbol != trade.isin and not _isin_pattern.match(trade.symbol):
                         await emit(Event("info", f"  {trade.isin} → {trade.symbol} (from file)", row=trade.row))
                     else:
                         trade.symbol = resolve(trade.isin)
@@ -809,8 +879,9 @@ async def run_automation(
                     await emit(Event("info", "Dry-run mode — skipping browser automation."))
                     await emit(Event("info", f"Net positions after FIFO: {len(trades)} buy lot(s) to enter into Google Finance."))
                     for t in trades:
+                        label = t.symbol if not t.isin else f"{t.isin} → {t.symbol}"
                         await emit(Event("success",
-                            f"[dry-run] {t.isin} → {t.symbol}, {t.quantity} shares @ ₹{t.buy_price}  (buy date: {t.buy_date})",
+                            f"[dry-run] {label}, {t.quantity} shares @ ₹{t.buy_price}  (buy date: {t.buy_date})",
                             row=t.row))
                     await emit(Event("done", "Dry run complete."))
                     return
@@ -860,24 +931,83 @@ async def run_automation(
                                 return
 
                         # ── Process trades ────────────────────────────────────
+                        # Strategy (verified 2026-03-31):
+                        #   Open the dialog ONCE. For every trade except the last,
+                        #   click "Save and add another" — the dialog resets and stays
+                        #   open, ready for the next stock. Click plain "Save" on the
+                        #   last trade to close the dialog.
+                        #   On failure: dismiss dialog, re-navigate, re-open, retry.
                         total = len(trades)
-                        for idx, trade in enumerate(trades, start=1):
-                            await emit(Event("info", f"[{idx}/{total}] Processing row {trade.row} — {trade.symbol}…", row=trade.row))
+                        failed: list[tuple[int, str, str]] = []
 
+                        # Remaining trades to process (allows skipping on fatal failure)
+                        pending = list(enumerate(trades, start=1))
+                        dialog_open = False  # tracks whether dialog is currently open
+
+                        while pending:
+                            idx, trade = pending[0]
+                            is_last = (len(pending) == 1)
+
+                            await emit(Event("info",
+                                f"[{idx}/{total}] {trade.symbol} (row {trade.row})…",
+                                row=trade.row))
+
+                            succeeded = False
                             for attempt in range(1, 4):
                                 try:
-                                    await _process_trade(page, trade, portfolio_name, emit)
+                                    await _process_trade(
+                                        page, trade, emit,
+                                        dialog_already_open=dialog_open,
+                                        keep_open=not is_last,
+                                    )
+                                    dialog_open = not is_last
+                                    succeeded = True
                                     break
                                 except Exception as e:
+                                    dialog_open = False
+                                    # Dismiss any open dialog / overlay
+                                    await page.keyboard.press("Escape")
+                                    await asyncio.sleep(1)
                                     if attempt < 3:
-                                        await emit(Event("warning", f"Row {trade.row}: attempt {attempt} failed ({e}), retrying…", row=trade.row))
+                                        await emit(Event("warning",
+                                            f"Row {trade.row}: attempt {attempt} failed ({e}), retrying…",
+                                            row=trade.row))
                                         await asyncio.sleep(2)
                                         await _open_portfolio(page, portfolio_name, emit)
+                                        # Re-open dialog so next attempt finds it ready
+                                        try:
+                                            await _open_add_investment_dialog(page)
+                                            await _select_stock_tab(page)
+                                            dialog_open = True
+                                        except Exception:
+                                            dialog_open = False
                                     else:
-                                        await emit(Event("error", f"Row {trade.row} FAILED after 3 attempts: {e}", row=trade.row, detail=str(e)))
+                                        reason = str(e)
+                                        failed.append((trade.row, trade.symbol, reason))
+                                        await emit(Event("error",
+                                            f"SKIPPED row {trade.row} ({trade.symbol}) after 3 attempts — {reason}",
+                                            row=trade.row, detail=reason))
+                                        # Re-open dialog for remaining trades if any
+                                        if len(pending) > 1:
+                                            try:
+                                                await _open_portfolio(page, portfolio_name, emit)
+                                                await _open_add_investment_dialog(page)
+                                                await _select_stock_tab(page)
+                                                dialog_open = True
+                                            except Exception:
+                                                dialog_open = False
+
+                            pending.pop(0)  # move to next trade regardless
 
                         await context.storage_state(path=str(AUTH_STATE))
-                        await emit(Event("done", f"All {total} trade(s) processed. Portfolio '{portfolio_name}' updated."))
+
+                        entered = total - len(failed)
+                        if failed:
+                            await emit(Event("warning",
+                                f"{len(failed)} trade(s) skipped due to errors — see log above for details."))
+                        await emit(Event("done",
+                            f"{entered}/{total} trade(s) entered into '{portfolio_name}'."
+                            + (f" {len(failed)} skipped." if failed else "")))
 
                     finally:
                         if record and trace_path:
